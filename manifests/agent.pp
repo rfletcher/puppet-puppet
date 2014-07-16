@@ -138,7 +138,7 @@ class puppet::agent(
       $service_enable = false
 
       # Run puppet as a cron - this saves memory and avoids the whole problem
-      # where puppet locks up for no reason. Also spreads out the run intervals
+      # where puppet locks up for no reason. Also spreads out the run times
       # more uniformly.
       $time1  =  fqdn_rand($puppet_run_interval)
       $time2  =  fqdn_rand($puppet_run_interval) + 30
