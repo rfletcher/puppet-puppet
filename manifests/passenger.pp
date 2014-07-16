@@ -33,20 +33,40 @@
 #
 class puppet::passenger(
   $generate_ssl_certs = true,
-  $puppet_passenger_port,
-  $puppet_passenger_tempdir = false,
-  $puppet_docroot,
-  $apache_serveradmin,
-  $puppet_conf,
-  $puppet_ssldir,
   $certname,
-  $conf_dir,
-  $dns_alt_names
+  $dns_alt_names,
+  $document_root,
+  $ssl_root,
+  $pool_size = floor( $::processorcount * 1.5 ),
 ){
-  include apache
-  include puppet::params
-  class { 'apache::mod::passenger': passenger_max_pool_size => 12, }
-  include apache::mod::ssl
+  include apache::modules::headers
+  include apache::modules::passenger
+  include apache::modules::ssl
+
+  exec { "mkdir -p ${document_root}":
+    creates => $document_root,
+  } ->
+
+  file { $document_root:
+    ensure => directory,
+    owner  => $::puppet::params::puppet_user,
+    group  => $::puppet::params::puppet_group,
+    mode   => '0755',
+  } ->
+
+  file { "${document_root}/config.ru":
+    ensure => present,
+    source => '/usr/share/puppet/ext/rack/config.ru',
+    owner  => $::puppet::params::puppet_user,
+    group  => $::puppet::params::puppet_group,
+    mode   => '0644',
+    notify => $apache::manage_service_autorestart,
+  } ->
+
+  apache::vhost { 'puppetmaster':
+    content => template( 'puppet/puppet_passenger.conf.erb' ),
+    require => Exec['Certificate_Check'],
+  }
 
   if $::osfamily == 'redhat' {
     file { '/var/lib/puppet/reports':
@@ -56,8 +76,8 @@ class puppet::passenger(
     }
   }
 
-  if str2bool($generate_ssl_certs) == true {
-    file{"${puppet_ssldir}/ca":
+  if str2bool( $generate_ssl_certs ) == true {
+    file { "${puppet_ssldir}/ca":
       ensure => directory,
       owner  => $::puppet::params::puppet_user,
       group  => $::puppet::params::puppet_group,
@@ -70,6 +90,7 @@ class puppet::passenger(
       group  => $::puppet::params::puppet_group,
       before => Exec['Certificate_Check'],
     }
+
     # first we need to generate the cert
     # Clean the installed certs out ifrst
     $crt_clean_cmd  = "puppet cert clean ${certname}"
@@ -88,86 +109,25 @@ class puppet::passenger(
       unless    => "/bin/ls ${puppet_ssldir}/certs/${certname}.pem",
       path      => '/usr/bin:/usr/local/bin',
       logoutput => on_failure,
-      require   => File[$puppet_conf]
+      require   => File[$::puppet::params::puppet_conf]
     }
-  }
-
-  file { $puppet_docroot:
-    ensure => directory,
-    owner  => $::puppet::params::puppet_user,
-    group  => $::puppet::params::puppet_group,
-    mode   => '0755',
-  }
-
-  apache::vhost { "puppet-${certname}":
-    port                 => $puppet_passenger_port,
-    priority             => '40',
-    docroot              => $puppet_docroot,
-    serveradmin          => $apache_serveradmin,
-    servername           => $certname,
-    ssl                  => true,
-    ssl_cert             => "${puppet_ssldir}/certs/${certname}.pem",
-    ssl_key              => "${puppet_ssldir}/private_keys/${certname}.pem",
-    ssl_chain            => "${puppet_ssldir}/ca/ca_crt.pem",
-    ssl_ca               => "${puppet_ssldir}/ca/ca_crt.pem",
-    ssl_crl              => "${puppet_ssldir}/ca/ca_crl.pem",
-    ssl_protocol         => 'ALL -SSLv2 -SSLv3',
-    ssl_cipher           => 'ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK',
-    ssl_honorcipherorder => 'On',
-    ssl_verify_client    => 'optional',
-    ssl_verify_depth     => '1',
-    ssl_options          => ['+StdEnvVars', '+ExportCertData'],
-    rack_base_uris       => '/',
-    directories          => [
-      {
-        path => $puppet_docroot,
-      },
-      {
-        path    => '/etc/puppet/rack',
-        options => 'None',
-      },
-    ],
-    require              => [ File['/etc/puppet/rack/config.ru'], File[$puppet_conf] ],
-  }
-
-  #Hack to add extra passenger configurations for puppetmaster
-  file { 'puppet_passenger.conf':
-    ensure  => file,
-    path    => "${apache::mod_dir}/puppet_passenger.conf",
-    content => template('puppet/puppet_passenger.conf.erb'),
-    notify  => Service['httpd'],
-  }
-
-  file { '/etc/puppet/rack':
-    ensure => directory,
-    owner  => $::puppet::params::puppet_user,
-    group  => $::puppet::params::puppet_group,
-    mode   => '0755',
-  }
-
-  file { '/etc/puppet/rack/config.ru':
-    ensure  => present,
-    owner   => $::puppet::params::puppet_user,
-    group   => $::puppet::params::puppet_group,
-    content => template('puppet/config.erb'),
-    mode    => '0644',
   }
 
   ini_setting {'puppetmastersslclient':
     ensure  => present,
     section => 'master',
     setting => 'ssl_client_header',
-    path    => $puppet_conf,
+    path    => $::puppet::params::puppet_conf,
     value   => 'SSL_CLIENT_S_DN',
-    require => File[$puppet_conf],
+    require => File[$::puppet::params::puppet_conf],
   }
 
   ini_setting {'puppetmastersslclientverify':
     ensure  => present,
     section => 'master',
     setting => 'ssl_client_verify_header',
-    path    => $puppet_conf,
+    path    => $::puppet::params::puppet_conf,
     value   => 'SSL_CLIENT_VERIFY',
-    require => File[$puppet_conf],
+    require => File[$::puppet::params::puppet_conf],
   }
 }

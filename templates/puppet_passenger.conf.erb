@@ -1,7 +1,48 @@
-PassengerHighPerformance on
-PassengerPoolIdleTime 1500
-# PassengerMaxRequests 1000
-PassengerStatThrottleRate 120
-<% if @puppet_passenger_tempdir != false %>
-PassengerTempDir <%= @puppet_passenger_tempdir %>
-<% end %>
+# WARNING: This file is being maintained by Puppet.
+# If you edit it directly on a server, your changes WILL be blown away.
+
+# This makes passenger incompatible with some other Apache modules. See the docs.
+PassengerHighPerformance On
+# Set this to about 1.5 times the number of CPU cores in your master:
+PassengerMaxPoolSize <%= @pool_size %>
+# Recycle master processes after they service 1000 requests
+PassengerMaxRequests 1000
+# Stop processes if they sit idle for 10 minutes
+PassengerPoolIdleTime 600
+
+Listen 8140
+
+<VirtualHost *:8140>
+  SSLEngine On
+
+  # Only allow high security cryptography. Alter if needed for compatibility.
+  SSLProtocol ALL -SSLv2 -SSLv3
+  SSLCipherSuite EDH+CAMELLIA:EDH+aRSA:EECDH+aRSA+AESGCM:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH:+CAMELLIA256:+AES256:+CAMELLIA128:+AES128:+SSLv3:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!DSS:!RC4:!SEED:!IDEA:!ECDSA:kEDH:CAMELLIA256-SHA:AES256-SHA:CAMELLIA128-SHA:AES128-SHA
+  SSLCertificateFile      <%= @ssl_root %>/certs/<%= @certname %>.pem
+  SSLCertificateKeyFile   <%= @ssl_root %>/private_keys/<%= @certname %>.pem
+  SSLCertificateChainFile <%= @ssl_root %>/ca/ca_crt.pem
+  SSLCACertificateFile    <%= @ssl_root %>/ca/ca_crt.pem
+  SSLCARevocationFile     <%= @ssl_root %>/ca/ca_crl.pem
+  SSLVerifyClient         optional
+  SSLVerifyDepth          1
+  SSLOptions              +StdEnvVars +ExportCertData
+
+  # These request headers are used to pass the client certificate
+  # authentication information on to the puppet master process
+  RequestHeader set X-SSL-Subject %{SSL_CLIENT_S_DN}e
+  RequestHeader set X-Client-DN %{SSL_CLIENT_S_DN}e
+  RequestHeader set X-Client-Verify %{SSL_CLIENT_VERIFY}e
+
+  DocumentRoot <%= @document_root %>
+
+  <Directory <%= @document_root %>>
+    Options None
+    AllowOverride None
+
+    Order allow,deny
+    Allow from all
+  </Directory>
+
+  CustomLog ${APACHE_LOG_DIR}/puppet-access.log combined_elb
+  ErrorLog ${APACHE_LOG_DIR}/puppet-error.log
+</VirtualHost>
