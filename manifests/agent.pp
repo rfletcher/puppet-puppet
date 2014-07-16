@@ -195,7 +195,7 @@ class puppet::agent(
     }
 
   #run interval in seconds
-  $runinterval = $puppet_run_interval * 60
+  $runinterval = "${puppet_run_interval}m"
 
   Ini_setting {
       path    => $::puppet::params::puppet_conf,
