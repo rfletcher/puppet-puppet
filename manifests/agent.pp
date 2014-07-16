@@ -61,18 +61,18 @@ class puppet::agent(
   $srv_domain             = undef,
   $ordering               = undef,
   $trusted_node_data      = undef,
-  $environment            = 'production',
+  $environment            = undef,
   $puppet_server          = $::puppet::params::puppet_server,
-  $use_srv_records        = false,
-  $puppet_run_interval    = 30,
-  $splay                  = false,
+  $use_srv_records        = undef,
+  $puppet_run_interval    = undef,
+  $splay                  = undef,
   $puppet_server_port     = $::puppet::params::puppet_server_port,
-  $report                 = true,
-  $pluginsync             = true,
-  $listen                 = false,
-  $reportserver           = '$server',
+  $report                 = undef,
+  $pluginsync             = undef,
+  $listen                 = undef,
+  $reportserver           = undef,
   $digest_algorithm       = $::puppet::params::digest_algorithm,
-  $configtimeout          = '2m',
+  $configtimeout          = undef,
   $stringify_facts        = undef,
   $verbose                = undef,
   $agent_noop             = undef,
@@ -223,167 +223,157 @@ class puppet::agent(
     }
   }
 
-  if $ordering != undef
-  {
-    $orderign_ensure = 'present'
-  }else {
-    $orderign_ensure = 'absent'
-  }
   ini_setting {'puppetagentordering':
-    ensure  => $orderign_ensure,
+    ensure  => $ordering ? { undef => absent, default => present },
     setting => 'ordering',
     value   => $ordering,
   }
-  if $trusted_node_data != undef
-  {
-    $trusted_node_data_ensure = 'present'
-  }else {
-    $trusted_node_data_ensure = 'absent'
-  }
+
   ini_setting {'puppetagenttrusted_node_data':
-    ensure  => $trusted_node_data_ensure,
+    ensure  => $trusted_node_data ? { undef => absent, default => present },
     setting => 'trusted_node_data',
     value   => $trusted_node_data,
   }
 
   ini_setting {'puppetagentenvironment':
-    ensure  => present,
+    ensure  => $environment ? { undef => absent, default => present },
     setting => 'environment',
     value   => $environment,
   }
 
   ini_setting {'puppetagentmaster':
-    ensure  => present,
+    ensure  => $puppet_server_port ? { undef => absent, 'puppet' => absent, default => present },
     setting => 'server',
     value   => $puppet_server,
   }
 
   ini_setting {'puppetagentuse_srv_records':
-    ensure  => present,
+    ensure  => $use_srv_records ? { undef => absent, default => present },
     setting => 'use_srv_records',
     value   => $use_srv_records,
   }
 
+  if $puppet_run_style == 'service' {
+    $runinterval_ensure = undef
+  } else {
+    $runinterval_ensure = $runinterval_ensure ? {
+      undef   => absent,
+      '30m'   => absent,
+      default => present
+    }
+  }
+
   ini_setting {'puppetagentruninterval':
-    ensure  => present,
+    ensure  => $runinterval_ensure,
     setting => 'runinterval',
     value   => $runinterval,
   }
 
   ini_setting {'puppetagentsplay':
-    ensure  => present,
+    ensure  => $splay ? { undef => absent, default => present },
     setting => 'splay',
     value   => $splay,
   }
 
   ini_setting {'puppetmasterport':
-    ensure  => present,
+    ensure  => $puppet_server_port ? { undef => absent, '8140' => absent, default => present },
     setting => 'masterport',
     value   => $puppet_server_port,
   }
+
   ini_setting {'puppetagentreport':
-    ensure  => present,
+    ensure  => $report ? { undef => absent, default => present },
     setting => 'report',
     value   => $report,
   }
+
   ini_setting {'puppetagentpluginsync':
-    ensure  => present,
+    ensure  => $pluginsync ? { undef => absent, default => present },
     setting => 'pluginsync',
     value   => $pluginsync,
   }
+
   ini_setting {'puppetagentlisten':
-    ensure  => present,
+    ensure  => $listen ? { undef => absent, default => present },
     setting => 'listen',
     value   => $listen,
   }
+
   ini_setting {'puppetagentreportserver':
-    ensure  => present,
+    ensure  => $reportserver ? { undef => absent, default => present },
     setting => 'reportserver',
     value   => $reportserver,
   }
+
   ini_setting {'puppetagentdigestalgorithm':
-    ensure  => present,
+    ensure  => $digest_algorithm ? { undef => absent, 'md5' => absent, default => present },
     setting => 'digest_algorithm',
     value   => $digest_algorithm,
   }
-  if ($templatedir != undef) and ($templatedir != 'undef')
-  {
-    ini_setting {'puppetagenttemplatedir':
-      ensure  => present,
-      setting => 'templatedir',
-      section => 'main',
-      value   => $templatedir,
-    }
+
+  ini_setting {'puppetagenttemplatedir':
+    ensure  =>  $templatedir ? { undef => absent, default => present },
+    setting => 'templatedir',
+    section => 'main',
+    value   => $templatedir,
   }
-  else
-  {
-    ini_setting {'puppetagenttemplatedir':
-      ensure  => absent,
-      setting => 'templatedir',
-      section => 'main',
-    }
-  }
+
   ini_setting {'puppetagentconfigtimeout':
-    ensure  => present,
+    ensure  => $configtimeout ? { undef => absent, default => present },
     setting => 'configtimeout',
     value   => $configtimeout,
   }
-  if $stringify_facts != undef {
-    ini_setting {'puppetagentstringifyfacts':
-      ensure  => present,
-      setting => 'stringify_facts',
-      value   => $stringify_facts,
-    }
+
+  ini_setting {'puppetagentstringifyfacts':
+    ensure  => $stringify_facts ? { undef => absent, default => present },
+    setting => 'stringify_facts',
+    value   => $stringify_facts,
   }
-  if $verbose != undef {
-    ini_setting {'puppetagentverbose':
-      ensure  => present,
-      setting => 'verbose',
-      value   => $verbose,
-    }
+
+  ini_setting {'puppetagentverbose':
+    ensure  => $verbose ? { undef => absent, default => present },
+    setting => 'verbose',
+    value   => $verbose,
   }
-  if $agent_noop != undef {
-    ini_setting {'puppetagentnoop':
-      ensure  => present,
-      setting => 'noop',
-      value   => $agent_noop,
-    }
+
+  ini_setting {'puppetagentnoop':
+    ensure  => $agent_noop ? { undef => absent, default => present },
+    setting => 'noop',
+    value   => $agent_noop,
   }
-  if $usecacheonfailure != undef {
-    ini_setting {'puppetagentusecacheonfailure':
-      ensure  => present,
-      setting => 'usecacheonfailure',
-      value   => $usecacheonfailure,
-    }
+
+  ini_setting {'puppetagentusecacheonfailure':
+    ensure  => $usecacheonfailure ? { undef => absent, default => present },
+    setting => 'usecacheonfailure',
+    value   => $usecacheonfailure,
   }
-  if $syslogfacility != undef {
-    ini_setting {'puppetagentsyslogfacility':
-      ensure  => present,
-      setting => 'syslogfacility',
-      value   => $syslogfacility,
-      section => 'main',
-    }
+
+  ini_setting {'puppetagentsyslogfacility':
+    ensure  => $syslogfacility ? { undef => absent, default => present },
+    setting => 'syslogfacility',
+    value   => $syslogfacility,
+    section => 'main',
   }
-  if $certname != undef {
-    ini_setting {'puppetagentcertname':
-      ensure  => present,
-      setting => 'certname',
-      value   => $certname,
-    }
+
+  ini_setting {'puppetagentcertname':
+    ensure  => $certname ? { undef => absent, default => present },
+    setting => 'certname',
+    value   => $certname,
   }
-  if $priority != undef {
-    ini_setting {'puppetagentpriority':
-      ensure  => present,
-      setting => 'priority',
-      value   => $priority,
-      section => 'main',
-    }
+
+  ini_setting {'puppetagentpriority':
+    ensure  => $priority ? { undef => absent, default => present },
+    setting => 'priority',
+    value   => $priority,
+    section => 'main',
   }
+
   ini_setting {'puppetagenthttpproxyhost':
     ensure  => $http_proxy_host ? { undef => absent, default => present },
     setting => 'http_proxy_host',
     value   => $http_proxy_host,
   }
+
   ini_setting {'puppetagenthttpproxyport':
     ensure  => $http_proxy_port ? { undef => absent, default => present },
     setting => 'http_proxy_port',
