@@ -64,12 +64,12 @@ class puppet::master (
   $hiera_config               = $::puppet::params::hiera_config,
   $environmentpath            = $::puppet::params::environmentpath,
   $environments               = $::puppet::params::environments,
-  $reports                    = store,
-  $storeconfigs               = false,
+  $reports                    = undef,
+  $storeconfigs               = undef,
   $storeconfigs_dbserver      = $::puppet::params::storeconfigs_dbserver,
   $storeconfigs_dbport        = $::puppet::params::storeconfigs_dbport,
   $certname                   = $::fqdn,
-  $autosign                   = false,
+  $autosign                   = undef,
   $reporturl                  = undef,
   $puppet_ssldir              = $::puppet::params::puppet_ssldir,
   $puppet_docroot             = $::puppet::params::puppet_docroot,
@@ -84,7 +84,7 @@ class puppet::master (
   $parser                     = $::puppet::params::parser,
   $puppetdb_startup_timeout   = '60',
   $puppetdb_strict_validation = $::puppet::params::puppetdb_strict_validation,
-  $dns_alt_names              = ['puppet'],
+  $dns_alt_names              = undef,
   $digest_algorithm           = $::puppet::params::digest_algorithm,
   $generate_ssl_certs         = true,
   $strict_variables           = undef,
@@ -111,7 +111,7 @@ class puppet::master (
   if $::osfamily == 'Debian'
   {
     package { 'puppetmaster-common':
-      ensure   => $version,
+      ensure => $version,
     }
     package { $puppet_master_package:
       ensure  => $version,
@@ -134,7 +134,7 @@ class puppet::master (
     puppet_ssldir            => $puppet_ssldir,
     certname                 => $certname,
     conf_dir                 => $::puppet::params::confdir,
-    dns_alt_names            => join($dns_alt_names,','),
+    dns_alt_names            => $dns_alt_names ? { undef => undef, default => join( $dns_alt_names,"," ) },
     generate_ssl_certs       => $generate_ssl_certs,
     puppet_passenger_tempdir => $puppet_passenger_tempdir,
   } ->
@@ -204,116 +204,134 @@ class puppet::master (
   }
 
   Ini_setting {
-      path    => $::puppet::params::puppet_conf,
-      require => File[$::puppet::params::puppet_conf],
-      notify  => Service['httpd'],
-      section => 'master',
+    path    => $::puppet::params::puppet_conf,
+    require => File[$::puppet::params::puppet_conf],
+    notify  => Service['httpd'],
+    section => 'master',
   }
 
-  case $environments {
-    'config': {
-      $setting_config='present'
-      $setting_directory='absent'
-    }
-    'directory': {
-      $setting_config='absent'
-      $setting_directory='present'
-    }
-    default: { fail("Unknown value for environments ${environments}") }
-  }
-
-  ini_setting {'puppetmastermodulepath':
-    ensure  => $setting_config,
-    setting => 'modulepath',
-    value   => $modulepath,
-  }
-  ini_setting {'puppetmastermanifest':
-    ensure  => $setting_config,
-    setting => 'manifest',
-    value   => $manifest,
-  }
-  ini_setting {'puppetmasterenvironmentpath':
-    ensure  => $setting_directory,
-    setting => 'environmentpath',
-    value   => $environmentpath,
-    section => 'main',
-  }
-
-  if $external_nodes != undef {
-    ini_setting {'puppetmasterencconfig':
-      ensure  => present,
-      setting => 'external_nodes',
-      value   => $external_nodes,
+  if $environments == 'directory' {
+    ini_setting {'puppetmastermodulepath':
+      ensure  => absent,
+      setting => 'modulepath',
+      value   => $modulepath,
     }
 
-    ini_setting {'puppetmasternodeterminus':
-      ensure  => present,
-      setting => 'node_terminus',
-      value   => 'exec'
+    ini_setting {'puppetmastermanifest':
+      ensure  => absent,
+      setting => 'manifest',
+      value   => $manifest,
     }
-  }
-  elsif $node_terminus != undef {
-    ini_setting {'puppetmasternodeterminus':
-      ensure  => present,
-      setting => 'node_terminus',
-      value   => $node_terminus
+
+    ini_setting {'puppetmasterenvironmentpath':
+      ensure  => $environmentpath ? { undef => absent, default => present },
+      setting => 'environmentpath',
+      value   => $environmentpath,
+    }
+  } elsif $environments == 'config' {
+    $ensure_modulepath = $modulepath ? {
+      undef                         => absent,
+      $::puppet::params::modulepath => absent,
+      '$confdir/modules'            => absent,
+      default                       => present,
+    }
+
+    ini_setting {'puppetmastermodulepath':
+      ensure  => $setting_config,
+      setting => 'modulepath',
+      value   => $modulepath,
+    }
+    ini_setting {'puppetmastermanifest':
+      ensure  => $setting_config,
+      setting => 'manifest',
+      value   => $manifest,
+    }
+    ini_setting {'puppetmasterenvironmentpath':
+      ensure  => $setting_directory,
+      setting => 'environmentpath',
+      value   => $environmentpath,
+      section => 'main',
+    }
+
+    if $external_nodes != undef {
+      ini_setting {'puppetmasterencconfig':
+        ensure  => present,
+        setting => 'external_nodes',
+        value   => $external_nodes,
+      }
+
+      ini_setting {'puppetmasternodeterminus':
+        ensure  => present,
+        setting => 'node_terminus',
+        value   => 'exec'
+      }
+    }
+    elsif $node_terminus != undef {
+      ini_setting {'puppetmasternodeterminus':
+        ensure  => present,
+        setting => 'node_terminus',
+        value   => $node_terminus
+      }
     }
   }
 
   ini_setting {'puppetmasterhieraconfig':
-    ensure  => present,
+    ensure  => $hiera_config ? {
+      undef                           => absent,
+      $::puppet::params::hiera_config => absent,
+      '$confdir/hiera.yaml'           => absent,
+      default                         => present,
+    },
     setting => 'hiera_config',
     value   => $hiera_config,
   }
 
   ini_setting {'puppetmasterautosign':
-    ensure  => present,
+    ensure  => $autosign ? { undef => absent, default => present },
     setting => 'autosign',
     value   => $autosign,
   }
 
   ini_setting {'puppetmastercertname':
-    ensure  => present,
+    ensure  => $certname ? { undef => absent, default => present },
     setting => 'certname',
     value   => $certname,
   }
 
   ini_setting {'puppetmasterreports':
-    ensure  => present,
+    ensure  => $reports ? { undef => absent, default => present },
     setting => 'reports',
     value   => $reports,
   }
 
   ini_setting {'puppetmasterpluginsync':
-    ensure  => present,
+    ensure  => $pluginsync ? { undef => absent, true => absent, default => present },
     setting => 'pluginsync',
     value   => $pluginsync,
   }
 
   ini_setting {'puppetmasterparser':
-    ensure  => present,
+    ensure  => $parser ? { undef => absent, 'current' => absent, default => present },
     setting => 'parser',
     value   => $parser,
   }
 
-  if $reporturl != undef {
-    ini_setting {'puppetmasterreport':
-      ensure  => present,
-      setting => 'reporturl',
-      value   => $reporturl,
-    }
+  ini_setting {'puppetmasterreport':
+    ensure  => $reporturl ? { undef => absent, default => present },
+    setting => 'reporturl',
+    value   => $reporturl,
   }
 
   ini_setting {'puppetmasterdnsaltnames':
-      ensure  => present,
-      setting => 'dns_alt_names',
-      value   => join($dns_alt_names, ','),
+    ensure  => $dns_alt_names ? { undef => absent, default => present },
+    setting => 'dns_alt_names',
+    value   => $dns_alt_names ? { undef => undef, default => join($dns_alt_names, ",") },
   }
 
   ini_setting {'puppetmasterdigestalgorithm':
-      ensure  => present,
-      setting => 'digest_algorithm',
-      value   => $digest_algorithm,
+    ensure  => $digest_algorithm ? { undef => absent, 'md5' => absent, default => present },
+    setting => 'digest_algorithm',
+    value   => $digest_algorithm,
   }
 
   if $strict_variables != undef {
