@@ -106,8 +106,7 @@ class puppet::passenger(
 
     exec { 'Certificate_Check':
       command   => "${crt_clean_cmd} ; ${crt_gen_cmd} && ${crt_sign_cmd} && ${cert_find_cmd}",
-      unless    => "/bin/ls ${puppet_ssldir}/certs/${certname}.pem",
-      path      => '/usr/bin:/usr/local/bin',
+      creates   => "${ssl_root}/certs/${certname}.pem",
       logoutput => on_failure,
       require   => File[$::puppet::params::puppet_conf]
     }
