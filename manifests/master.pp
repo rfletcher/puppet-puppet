@@ -82,6 +82,7 @@ class puppet::master (
   $apache_serveradmin         = $::puppet::params::apache_serveradmin,
   $pluginsync                 = true,
   $parser                     = $::puppet::params::parser,
+  $manage_puppetdb            = true,
   $puppetdb_startup_timeout   = '60',
   $puppetdb_strict_validation = $::puppet::params::puppetdb_strict_validation,
   $dns_alt_names              = undef,
@@ -189,20 +190,27 @@ class puppet::master (
   }
 
   if $storeconfigs {
-    Anchor['puppet::master::begin'] ->
-    class { 'puppet::storeconfigs':
-      dbserver                   => $storeconfigs_dbserver,
-      dbport                     => $storeconfigs_dbport,
-      puppet_service             => Service[$apache::manage_service_autorestart],
-      puppet_confdir             => $::puppet::params::confdir,
-      puppet_conf                => $::puppet::params::puppet_conf,
-      puppet_master_package      => $puppet_master_package,
-      puppetdb_startup_timeout   => $puppetdb_startup_timeout,
-      puppetdb_strict_validation => $puppetdb_strict_validation,
-      puppetdb_version           => $puppetdb_version,
-    } ->
-    Anchor['puppet::master::end']
-  }
+    if $manage_puppetdb {
+      Anchor['puppet::master::begin'] ->
+      class { 'puppet::storeconfigs':
+        dbserver                   => $storeconfigs_dbserver,
+        dbport                     => $storeconfigs_dbport,
+        puppet_service             => Service[$apache::manage_service_autorestart],
+        puppet_confdir             => $::puppet::params::confdir,
+        puppet_conf                => $::puppet::params::puppet_conf,
+        puppet_master_package      => $puppet_master_package,
+        puppetdb_startup_timeout   => $puppetdb_startup_timeout,
+        puppetdb_strict_validation => $puppetdb_strict_validation,
+        puppetdb_version           => $puppetdb_version,
+      } ->
+      Anchor['puppet::master::end']
+    } else {
+      ini_setting {'puppetmasterstoreconfigs':
+        ensure  => $storeconfigs ? { undef => absent, default => present },
+        setting => 'storeconfigs',
+        value   => $storeconfigs,
+      }
+    }
 
   Ini_setting {
     path    => $::puppet::params::puppet_conf,
@@ -266,8 +274,7 @@ class puppet::master (
         setting => 'node_terminus',
         value   => 'exec'
       }
-    }
-    elsif $node_terminus != undef {
+    } elsif $node_terminus != undef {
       ini_setting {'puppetmasternodeterminus':
         ensure  => present,
         setting => 'node_terminus',

@@ -11,7 +11,6 @@
 # Sample Usage:
 #
 class puppet::params {
-
   $puppet_server                    = 'puppet'
   $modulepath                       = '/etc/puppet/modules'
   $puppet_user                      = 'puppet'
