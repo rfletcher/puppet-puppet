@@ -155,12 +155,12 @@ class puppet::master (
       require => File[$::puppet::params::confdir],
       owner   => $::puppet::params::puppet_user,
       group   => $::puppet::params::puppet_group,
-      notify  => Service[$apache::manage_service_autorestart],
+      notify  => $apache::manage_service_autorestart,
     }
   }
   else {
     File<| title == $::puppet::params::puppet_conf |> {
-      notify  => Service[$apache::manage_service_autorestart],
+      notify  => $apache::manage_service_autorestart,
     }
   }
 
@@ -171,22 +171,29 @@ class puppet::master (
       require => Package[$puppet_master_package],
       owner   => $::puppet::params::puppet_user,
       group   => $::puppet::params::puppet_group,
-      notify  => Service[$apache::manage_service_autorestart],
+      notify  => $apache::manage_service_autorestart,
     }
   }
   else {
     File<| title == $::puppet::params::confdir |> {
-      notify  +> Service[$apache::manage_service_autorestart],
+      notify  +> $apache::manage_service_autorestart,
       require +> Package[$puppet_master_package],
     }
   }
 
   file { $puppet_vardir:
-    ensure  => directory,
-    owner   => $::puppet::params::puppet_user,
-    group   => $::puppet::params::puppet_group,
-    notify  => Service[$apache::manage_service_autorestart],
-    require => Package[$puppet_master_package]
+    ensure       => directory,
+    owner        => $::puppet::params::puppet_user,
+    group        => $::puppet::params::puppet_group,
+    notify       => $apache::manage_service_autorestart,
+    require      => Package[$puppet_master_package]
+  }
+
+  Ini_setting {
+      path    => $::puppet::params::puppet_conf,
+      require => File[$::puppet::params::puppet_conf],
+      notify  => $apache::manage_service_autorestart,
+      section => 'master',
   }
 
   if $storeconfigs {
@@ -195,8 +202,7 @@ class puppet::master (
       class { 'puppet::storeconfigs':
         dbserver                   => $storeconfigs_dbserver,
         dbport                     => $storeconfigs_dbport,
-        puppet_service             => Service[$apache::manage_service_autorestart],
-        puppet_confdir             => $::puppet::params::confdir,
+        puppet_service             => $apache::manage_service_autorestart,
         puppet_conf                => $::puppet::params::puppet_conf,
         puppet_master_package      => $puppet_master_package,
         puppetdb_startup_timeout   => $puppetdb_startup_timeout,
