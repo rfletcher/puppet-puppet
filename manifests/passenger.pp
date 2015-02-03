@@ -54,9 +54,21 @@ class puppet::passenger(
     mode   => '0755',
   } ->
 
-  file { "${document_root}/config.ru":
+  exec { 'puppermaster-passenger-install-config.ru':
+    command => "cp /usr/share/puppet/ext/rack/config.ru ${document_root}/../config.ru",
+    creates => "${document_root}/../config.ru",
+    notify  => $apache::manage_service_autorestart,
+  } ->
+
+  file_line { 'puppermaster-passenger-set-load_path':
+    path   => "${document_root}/../config.ru",
+    line   => '$LOAD_PATH.unshift(\'/usr/lib/ruby/vendor_ruby\')',
+    after  => '^#\s+\$LOAD_PATH\.',
+    notify => $apache::manage_service_autorestart,
+  } ->
+
+  file { "${document_root}/../config.ru":
     ensure => present,
-    source => '/usr/share/puppet/ext/rack/config.ru',
     owner  => $::puppet::params::puppet_user,
     group  => $::puppet::params::puppet_group,
     mode   => '0644',
