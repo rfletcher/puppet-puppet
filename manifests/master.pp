@@ -110,8 +110,7 @@ class puppet::master (
     }
   }
 
-  if $::osfamily == 'Debian'
-  {
+  if $::osfamily == 'Debian' {
     package { 'puppetmaster-common':
       ensure => $version,
     }
@@ -119,9 +118,7 @@ class puppet::master (
       ensure  => $version,
       require => Package[puppetmaster-common],
     }
-  }
-  else
-  {
+  } else {
     package { $puppet_master_package:
       ensure         => $version,
     }
@@ -135,7 +132,6 @@ class puppet::master (
     puppet_conf              => $::puppet::params::puppet_conf,
     puppet_ssldir            => $puppet_ssldir,
     certname                 => $certname,
-    conf_dir                 => $::puppet::params::confdir,
     dns_alt_names            => $dns_alt_names ? { undef => undef, default => join( $dns_alt_names,"," ) },
     generate_ssl_certs       => $generate_ssl_certs,
     puppet_passenger_tempdir => $puppet_passenger_tempdir,
@@ -157,8 +153,7 @@ class puppet::master (
       group   => $::puppet::params::puppet_group,
       notify  => $apache::manage_service_autorestart,
     }
-  }
-  else {
+  } else {
     File<| title == $::puppet::params::puppet_conf |> {
       notify  => $apache::manage_service_autorestart,
     }
@@ -173,8 +168,7 @@ class puppet::master (
       group   => $::puppet::params::puppet_group,
       notify  => $apache::manage_service_autorestart,
     }
-  }
-  else {
+  } else {
     File<| title == $::puppet::params::confdir |> {
       notify  +> $apache::manage_service_autorestart,
       require +> Package[$puppet_master_package],
@@ -190,10 +184,10 @@ class puppet::master (
   }
 
   Ini_setting {
-      path    => $::puppet::params::puppet_conf,
-      require => File[$::puppet::params::puppet_conf],
-      notify  => $apache::manage_service_autorestart,
-      section => 'master',
+    path    => $::puppet::params::puppet_conf,
+    require => File[$::puppet::params::puppet_conf],
+    notify  => $apache::manage_service_autorestart,
+    section => 'master',
   }
 
   if $storeconfigs {
@@ -217,12 +211,6 @@ class puppet::master (
         value   => $storeconfigs,
       }
     }
-
-  Ini_setting {
-    path    => $::puppet::params::puppet_conf,
-    require => File[$::puppet::params::puppet_conf],
-    notify  => Service[$apache::manage_service_autorestart],
-    section => 'master',
   }
 
   if $environments == 'directory' {
@@ -249,23 +237,6 @@ class puppet::master (
       $::puppet::params::modulepath => absent,
       '$confdir/modules'            => absent,
       default                       => present,
-    }
-
-    ini_setting {'puppetmastermodulepath':
-      ensure  => $setting_config,
-      setting => 'modulepath',
-      value   => $modulepath,
-    }
-    ini_setting {'puppetmastermanifest':
-      ensure  => $setting_config,
-      setting => 'manifest',
-      value   => $manifest,
-    }
-    ini_setting {'puppetmasterenvironmentpath':
-      ensure  => $setting_directory,
-      setting => 'environmentpath',
-      value   => $environmentpath,
-      section => 'main',
     }
 
     if $external_nodes != undef {
@@ -351,9 +322,9 @@ class puppet::master (
   if $strict_variables != undef {
     validate_bool(str2bool($strict_variables))
     ini_setting {'puppetmasterstrictvariables':
-        ensure  => present,
-        setting => 'strict_variables',
-        value   => $strict_variables,
+      ensure  => present,
+      setting => 'strict_variables',
+      value   => $strict_variables,
     }
   }
 

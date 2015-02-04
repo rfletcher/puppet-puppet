@@ -31,23 +31,28 @@
 #           conf_dir               => '/etc/puppet',
 #   }
 #
+
 class puppet::passenger(
-  $generate_ssl_certs = true,
+  $apache_serveradmin,
   $certname,
   $dns_alt_names,
-  $document_root,
-  $ssl_root,
+  $generate_ssl_certs = true,
   $pool_size = floor( $::processorcount * 1.5 ),
+  $puppet_conf,
+  $puppet_docroot,
+  $puppet_passenger_port,
+  $puppet_passenger_tempdir = false,
+  $puppet_ssldir,
 ){
   include apache::modules::headers
   include apache::modules::passenger
   include apache::modules::ssl
 
-  exec { "mkdir -p ${document_root}":
-    creates => $document_root,
+  exec { "mkdir -p ${puppet_docroot}":
+    creates => $puppet_docroot,
   } ->
 
-  file { $document_root:
+  file { $puppet_docroot:
     ensure => directory,
     owner  => $::puppet::params::puppet_user,
     group  => $::puppet::params::puppet_group,
@@ -55,19 +60,19 @@ class puppet::passenger(
   } ->
 
   exec { 'puppermaster-passenger-install-config.ru':
-    command => "cp /usr/share/puppet/ext/rack/config.ru ${document_root}/../config.ru",
-    creates => "${document_root}/../config.ru",
+    command => "cp /usr/share/puppet/ext/rack/config.ru ${puppet_docroot}/../config.ru",
+    creates => "${puppet_docroot}/../config.ru",
     notify  => $apache::manage_service_autorestart,
   } ->
 
   file_line { 'puppermaster-passenger-set-load_path':
-    path   => "${document_root}/../config.ru",
+    path   => "${puppet_docroot}/../config.ru",
     line   => '$LOAD_PATH.unshift(\'/usr/lib/ruby/vendor_ruby\')',
     after  => '^#\s+\$LOAD_PATH\.',
     notify => $apache::manage_service_autorestart,
   } ->
 
-  file { "${document_root}/../config.ru":
+  file { "${puppet_docroot}/../config.ru":
     ensure => present,
     owner  => $::puppet::params::puppet_user,
     group  => $::puppet::params::puppet_group,
@@ -118,7 +123,7 @@ class puppet::passenger(
 
     exec { 'Certificate_Check':
       command   => "${crt_clean_cmd} ; ${crt_gen_cmd} && ${crt_sign_cmd} && ${cert_find_cmd}",
-      creates   => "${ssl_root}/certs/${certname}.pem",
+      creates   => "${puppet_ssldir}/certs/${certname}.pem",
       logoutput => on_failure,
       require   => File[$::puppet::params::puppet_conf]
     }

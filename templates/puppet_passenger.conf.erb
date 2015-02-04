@@ -10,19 +10,27 @@ PassengerMaxRequests 1000
 # Stop processes if they sit idle for 10 minutes
 PassengerPoolIdleTime 600
 
-Listen 8140
+<%- if @puppet_passenger_tempdir -%>
+PassengerTempDir <%= @puppet_passenger_tempdir %>
+<%- end -%>
 
-<VirtualHost *:8140>
+Listen <%= @puppet_passenger_port %>
+
+<VirtualHost *:<%= @puppet_passenger_port %>>
+  <%- if @apache_serveradmin -%>
+  ServerAdmin <%= @apache_serveradmin %>
+  <%- end -%>
+
   SSLEngine On
 
   # Only allow high security cryptography. Alter if needed for compatibility.
   SSLProtocol ALL -SSLv2 -SSLv3
   SSLCipherSuite EDH+CAMELLIA:EDH+aRSA:EECDH+aRSA+AESGCM:EECDH+aRSA+SHA384:EECDH+aRSA+SHA256:EECDH:+CAMELLIA256:+AES256:+CAMELLIA128:+AES128:+SSLv3:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!DSS:!RC4:!SEED:!IDEA:!ECDSA:kEDH:CAMELLIA256-SHA:AES256-SHA:CAMELLIA128-SHA:AES128-SHA
-  SSLCertificateFile      <%= @ssl_root %>/certs/<%= @certname %>.pem
-  SSLCertificateKeyFile   <%= @ssl_root %>/private_keys/<%= @certname %>.pem
-  SSLCertificateChainFile <%= @ssl_root %>/ca/ca_crt.pem
-  SSLCACertificateFile    <%= @ssl_root %>/ca/ca_crt.pem
-  SSLCARevocationFile     <%= @ssl_root %>/ca/ca_crl.pem
+  SSLCertificateFile      <%= @puppet_ssldir %>/certs/<%= @certname %>.pem
+  SSLCertificateKeyFile   <%= @puppet_ssldir %>/private_keys/<%= @certname %>.pem
+  SSLCertificateChainFile <%= @puppet_ssldir %>/ca/ca_crt.pem
+  SSLCACertificateFile    <%= @puppet_ssldir %>/ca/ca_crt.pem
+  SSLCARevocationFile     <%= @puppet_ssldir %>/ca/ca_crl.pem
   SSLVerifyClient         optional
   SSLVerifyDepth          1
   SSLOptions              +StdEnvVars +ExportCertData
@@ -33,9 +41,9 @@ Listen 8140
   RequestHeader set X-Client-DN %{SSL_CLIENT_S_DN}e
   RequestHeader set X-Client-Verify %{SSL_CLIENT_VERIFY}e
 
-  DocumentRoot <%= @document_root %>
+  DocumentRoot <%= @puppet_docroot %>
 
-  <Directory <%= @document_root %>>
+  <Directory <%= @puppet_docroot %>>
     Options None
     AllowOverride None
 
