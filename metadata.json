@@ -65,7 +65,6 @@
     {"name":"puppetlabs/stdlib","version_requirement":">=3.0.0"},
     {"name":"puppetlabs/apt","version_requirement":">=1.1.0"},
     {"name":"puppetlabs/puppetdb","version_requirement":">=2.0.0"},
-    {"name":"puppetlabs/apache","version_requirement":">=1.0.1"},
     {"name":"puppetlabs/inifile","version_requirement":">=1.0.0"}
   ]
 }
