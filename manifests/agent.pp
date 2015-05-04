@@ -29,6 +29,7 @@
 #   ['stringify_facts']       - Wether puppet transforms structured facts in strings or no. Defaults to true in puppet < 4, deprecated in puppet >=4 (and will default to false)
 #   ['http_proxy_host']       - The hostname of an HTTP proxy to use for agent -> master connections
 #   ['http_proxy_port']       - The port to use when puppet uses an HTTP proxy
+#   ['server_pool_size']      - Number of puppet master servers. Used to coarsely distribute load.
 #
 # Actions:
 # - Install and configures the puppet agent
@@ -80,6 +81,7 @@ class puppet::agent(
   $certname               = undef,
   $http_proxy_host        = undef,
   $http_proxy_port        = undef,
+  $server_pool_size       = undef,
 ) inherits puppet::params {
 
   if ! defined(User[$::puppet::params::puppet_user]) {
@@ -241,10 +243,16 @@ class puppet::agent(
     value   => $environment,
   }
 
+  if is_integer( $server_pool_size ) and $server_pool_size > 1 {
+    $real_puppet_server = rand_hostname( $puppet_server, $server_pool_size )
+  } else {
+    $real_puppet_server = $puppet_server
+  }
+
   ini_setting {'puppetagentmaster':
     ensure  => $puppet_server_port ? { undef => absent, 'puppet' => absent, default => present },
     setting => 'server',
-    value   => $puppet_server,
+    value   => $real_puppet_server,
   }
 
   ini_setting {'puppetagentuse_srv_records':
