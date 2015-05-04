@@ -10,7 +10,7 @@
 #   ['puppet_conf']              - The puppet config dir
 #   ['puppet_ssldir']            - The pupet ssl dir
 #   ['certname']                 - The puppet certname
-#   [conf_dir]                   - The configuration directory of the puppet install
+#   ['conf_dir']                 - The configuration directory of the puppet install
 #
 # Actions:
 # - Configures apache and passenger for puppet master use.
@@ -43,10 +43,16 @@ class puppet::passenger(
   $puppet_passenger_port,
   $puppet_passenger_tempdir = false,
   $puppet_ssldir,
+  $ca_server,
+  $ca_port,
 ){
   include apache::modules::headers
   include apache::modules::passenger
   include apache::modules::ssl
+
+  if $ca_server != undef and $ca_server != "" {
+    include apache::modules::proxy
+  }
 
   exec { "mkdir -p ${puppet_docroot}":
     creates => $puppet_docroot,
@@ -110,13 +116,13 @@ class puppet::passenger(
 
     # first we need to generate the cert
     # Clean the installed certs out ifrst
-    $crt_clean_cmd  = "puppet cert clean ${certname}"
+    $crt_clean_cmd = "puppet cert clean ${certname}"
     # I would have preferred to use puppet cert generate, but it does not
     # return the corret exit code on some versions of puppet
-    $crt_gen_cmd   = "puppet certificate --ca-location=local --dns_alt_names=${dns_alt_names} generate ${certname}"
-    # I am using the sign command here b/c AFAICT, the sign command for certificate
-    # does not work
-    $crt_sign_cmd  = "puppet cert sign --allow-dns-alt-names ${certname}"
+    $crt_gen_cmd   = "puppet cert generate --dns_alt_names \"${dns_alt_names}\" ${certname}"
+    # # I am using the sign command here b/c AFAICT, the sign command for certificate
+    # # does not work
+    # $crt_sign_cmd  = "puppet cert sign --allow-dns-alt-names ${certname}"
     # find is required to move the cert into the certs directory which is
     # where it needs to be for puppetdb to find it
     $cert_find_cmd = "puppet certificate --ca-location=local find ${certname}"

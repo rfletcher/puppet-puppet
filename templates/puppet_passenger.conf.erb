@@ -51,6 +51,15 @@ Listen <%= @puppet_passenger_port %>
     Allow from all
   </Directory>
 
+  <%- if @ca_server.is_a?( String ) && @ca_server != "" -%>
+    SSLProxyEngine On
+    ProxyPassMatch ^/([^/]+/certificate.*)$ https://<%= @ca_server %>:<%= @ca_port %>/$1
+
+    <Location ~ "/[^/]+/certificate">
+      PassengerHighPerformance Off
+    </Location>
+  <%- end -%>
+
   CustomLog ${APACHE_LOG_DIR}/puppet-access.log combined_elb
   ErrorLog ${APACHE_LOG_DIR}/puppet-error.log
 </VirtualHost>

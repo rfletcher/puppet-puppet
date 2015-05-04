@@ -34,6 +34,8 @@
 #  ['digest_algorithm']         - The algorithm to use for file digests.
 #  ['generate_ssl_certs']       - Generate ssl certs (false to disable)
 #  ['strict_variables']         - Makes the parser raise errors when referencing unknown variables
+#  ['ca_server']                - Proxy certificate requests to another server
+#  ['ca_port']                  - CA server port
 #
 # Requires:
 #
@@ -90,6 +92,8 @@ class puppet::master (
   $generate_ssl_certs         = true,
   $strict_variables           = undef,
   $puppetdb_version           = 'present',
+  $ca_server                  = undef,
+  $ca_port                    = $::puppet::params::ca_port,
 ) inherits puppet::params {
   include apache
 
@@ -111,6 +115,20 @@ class puppet::master (
   }
 
   if $::osfamily == 'Debian' {
+    file { $puppet::params::puppetmaster_defaults:
+      mode    => '0644',
+      owner   => 'root',
+      group   => 'root',
+      before  => Package[$puppet_master_package],
+      content => template("puppet/${puppet::params::puppetmaster_defaults}.erb"),
+    }
+    file { $puppet::params::puppetqd_defaults:
+      mode    => '0644',
+      owner   => 'root',
+      group   => 'root',
+      before  => Package['puppetmaster-common'],
+      content => template("puppet/${puppet::params::puppetqd_defaults}.erb"),
+    }
     package { 'puppetmaster-common':
       ensure => $version,
     }
@@ -120,7 +138,7 @@ class puppet::master (
     }
   } else {
     package { $puppet_master_package:
-      ensure         => $version,
+      ensure => $version,
     }
   }
 
@@ -135,6 +153,8 @@ class puppet::master (
     dns_alt_names            => $dns_alt_names ? { undef => undef, default => join( $dns_alt_names,"," ) },
     generate_ssl_certs       => $generate_ssl_certs,
     puppet_passenger_tempdir => $puppet_passenger_tempdir,
+    ca_server                => $ca_server,
+    ca_port                  => $ca_port,
   } ->
   Anchor['puppet::master::end']
 
@@ -275,6 +295,12 @@ class puppet::master (
     ensure  => $autosign ? { undef => absent, default => present },
     setting => 'autosign',
     value   => $autosign,
+  }
+
+  ini_setting {'puppetmasterca':
+    ensure  => $ca_server ? { undef => absent, default => present },
+    setting => 'ca',
+    value   => false,
   }
 
   ini_setting {'puppetmastercertname':

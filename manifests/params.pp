@@ -12,18 +12,19 @@
 #
 class puppet::params {
   $puppet_server                    = 'puppet'
+  $puppet_server_port               = '8140'
   $modulepath                       = '/etc/puppet/modules'
   $puppet_user                      = 'puppet'
   $puppet_group                     = 'puppet'
   $storeconfigs_dbserver            = $::fqdn
   $storeconfigs_dbport              = '8081'
+  $ca_port                          = $puppet_server_port
   $certname                         = $::fqdn
   $confdir                          = '/etc/puppet'
   $manifest                         = '/etc/puppet/manifests/site.pp'
   $hiera_config                     = '/etc/puppet/hiera.yaml'
   $puppet_docroot                   = '/etc/puppet/rack/public'
-  $puppet_passenger_port            = '8140'
-  $puppet_server_port               = '8140'
+  $puppet_passenger_port            = $puppet_server_port
   $puppet_agent_enabled             = true
   $apache_serveradmin               = 'root'
   $parser                           = 'current'
@@ -67,6 +68,8 @@ class puppet::params {
       $puppet_conf                  = '/etc/puppet/puppet.conf'
       $puppet_vardir                = '/var/lib/puppet'
       $puppet_ssldir                = '/var/lib/puppet/ssl'
+      $puppetmaster_defaults        = '/etc/default/puppetmaster'
+      $puppetqd_defaults            = '/etc/default/puppetqd'
       $passenger_package            = 'libapache2-mod-passenger'
       $rack_package                 = 'librack-ruby'
     }
