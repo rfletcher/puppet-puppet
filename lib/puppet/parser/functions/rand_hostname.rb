@@ -9,7 +9,7 @@ module Puppet::Parser::Functions
     if max.to_i <= 1
       template
     else
-      index = function_fqdn_rand( [max.to_i - 1, seed] ).to_i + 1
+      index = function_fqdn_rand( [max.to_i, seed] ).to_i + 1
 
       parts = template.split( "." )
       parts.first.sub!( /\d+$/, index.to_s )
