@@ -6,14 +6,14 @@ module Puppet::Parser::Functions
   ) do |args|
     template, max, seed = *args
 
-    if max == "1"
-      index = 1
+    if max.to_i <= 1
+      template
     else
       index = function_fqdn_rand( [max.to_i - 1, seed] ).to_i + 1
-    end
 
-    parts = template.split( "." )
-    parts.first.sub!( /\d+$/, index.to_s )
-    parts.join( "." )
+      parts = template.split( "." )
+      parts.first.sub!( /\d+$/, index.to_s )
+      parts.join( "." )
+    end
   end
 end
