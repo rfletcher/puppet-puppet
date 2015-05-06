@@ -294,13 +294,13 @@ class puppet::master (
   ini_setting {'puppetmasterautosign':
     ensure  => $autosign ? { undef => absent, default => present },
     setting => 'autosign',
-    value   => $autosign,
+    value   => "${autosign}",
   }
 
   ini_setting {'puppetmasterca':
     ensure  => $ca_server ? { undef => absent, default => present },
     setting => 'ca',
-    value   => false,
+    value   => 'false',
   }
 
   ini_setting {'puppetmastercertname':
