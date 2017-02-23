@@ -49,7 +49,7 @@ class puppet::agent(
   $puppet_agent_package   = $::puppet::params::puppet_agent_package,
   $version                = 'present',
   $puppet_run_style       = 'service',
-  $puppet_run_command     = '/usr/bin/puppet agent --no-daemonize --onetime --logdest syslog > /dev/null 2>&1',
+  $puppet_run_command     = 'puppet agent --no-daemonize --onetime --logdest syslog > /dev/null 2>&1',
   $user_id                = undef,
   $group_id               = undef,
 
