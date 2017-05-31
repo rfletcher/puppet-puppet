@@ -23,6 +23,7 @@ class puppet::params {
   $confdir                          = '/etc/puppet'
   $manifest                         = '/etc/puppet/manifests/site.pp'
   $hiera_config                     = '/etc/puppet/hiera.yaml'
+  $puppet_root                      = '/usr/share/puppet'
   $puppet_docroot                   = '/etc/puppet/rack/public'
   $puppet_passenger_port            = $puppet_server_port
   $puppet_agent_enabled             = true

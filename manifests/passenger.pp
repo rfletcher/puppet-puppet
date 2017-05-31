@@ -42,6 +42,7 @@ class puppet::passenger(
   $puppet_docroot,
   $puppet_passenger_port,
   $puppet_passenger_tempdir = false,
+  $puppet_root,
   $puppet_ssldir,
   $ca_server,
   $ca_port,
@@ -66,7 +67,7 @@ class puppet::passenger(
   } ->
 
   exec { 'puppermaster-passenger-install-config.ru':
-    command => "cp /usr/share/puppet/ext/rack/config.ru ${puppet_docroot}/../config.ru",
+    command => "cp ${puppet_root}/ext/rack/config.ru ${puppet_docroot}/../config.ru",
     creates => "${puppet_docroot}/../config.ru",
     notify  => $apache::manage_service_autorestart,
   } ->

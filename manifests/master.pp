@@ -74,6 +74,7 @@ class puppet::master (
   $autosign                   = undef,
   $reporturl                  = undef,
   $puppet_ssldir              = $::puppet::params::puppet_ssldir,
+  $puppet_root                = $::puppet::params::puppet_root,
   $puppet_docroot             = $::puppet::params::puppet_docroot,
   $puppet_vardir              = $::puppet::params::puppet_vardir,
   $puppet_passenger_port      = $::puppet::params::puppet_passenger_port,
@@ -94,6 +95,9 @@ class puppet::master (
   $puppetdb_version           = 'present',
   $ca_server                  = undef,
   $ca_port                    = $::puppet::params::ca_port,
+  $package_source             = undef,
+  $common_package_source      = undef,
+  $terminus_package_source    = undef,
 ) inherits puppet::params {
   include apache
 
@@ -114,7 +118,84 @@ class puppet::master (
     }
   }
 
-  if $::osfamily == 'Debian' {
+  if $package_source != undef {
+    if $terminus_package_source != undef {
+      $terminus_package             = 'puppetdb-terminus'
+      $real_terminus_package_source = '/tmp/puppetdb-terminus.deb'
+
+      wget::fetch { $terminus_package:
+        source      => $terminus_package_source,
+        destination => $real_terminus_package_source,
+        before      => Package['puppet-master-terminus'],
+      }
+
+      # remove any version previously installed with apt
+      exec { "remove apt ${terminus_package}":
+        command => "dpkg -r ${terminus_package}",
+        onlyif  => "dpkg --list ${terminus_package} | grep '^i' && apt-cache madison ${terminus_package} | grep \"\$(dpkg-query --show ${terminus_package} | awk '{ print \$2 }')\"",
+        before  => Package['puppet-master-terminus'],
+      }
+
+      package { 'puppet-master-terminus':
+        ensure   => $package_ensure,
+        provider => 'dpkg',
+        source   => $real_terminus_package_source,
+        before   => [
+          Package[$terminus_package],
+          Package[$puppet_master_package],
+        ],
+        notify   => Service[$puppet_master_service],
+      }
+    }
+
+    if $common_package_source != undef {
+      $puppet_master_common_package = "${puppet_master_package}-common"
+      $real_common_package_source   = '/tmp/puppetmaster-common.deb'
+
+      wget::fetch { $puppet_master_common_package:
+        source      => $common_package_source,
+        destination => $real_common_package_source,
+        before      => Package[$puppet_master_common_package],
+      }
+
+      # remove any version previously installed with apt
+      exec { "remove apt ${puppet_master_common_package}":
+        command => "dpkg -r ${puppet_master_common_package}",
+        onlyif  => "dpkg --list ${puppet_master_common_package} | grep '^i' && apt-cache madison ${puppet_master_common_package} | grep \"\$(dpkg-query --show ${puppet_master_common_package} | awk '{ print \$2 }')\"",
+        before  => Package[$puppet_master_common_package],
+      }
+
+      package { $puppet_master_common_package:
+        ensure   => $package_ensure,
+        provider => 'dpkg',
+        source   => $real_common_package_source,
+        before   => Package[$puppet_master_package],
+        notify   => Service[$puppet_master_service],
+      }
+    }
+
+    $real_package_source = '/tmp/puppetmaster.deb'
+
+    wget::fetch { $puppet_master_package:
+      source      => $package_source,
+      destination => $real_package_source,
+      before      => Package[$puppet_master_package],
+    }
+
+    # remove any version previously installed with apt
+    exec { "remove apt ${puppet_master_package}":
+      command => "dpkg -r ${puppet_master_package}",
+      onlyif  => "dpkg --list ${puppet_master_package} | grep '^i' && apt-cache madison ${puppet_master_package} | grep \"\$(dpkg-query --show ${puppet_master_package} | awk '{ print \$2 }')\"",
+      before  => Package[$puppet_master_package],
+    }
+
+    package { $puppet_master_package:
+      ensure   => $package_ensure,
+      provider => 'dpkg',
+      source   => $real_package_source,
+      notify   => Service[$puppet_master_service],
+    }
+  } elsif $::osfamily == 'Debian' {
     file { $puppet::params::puppetmaster_defaults:
       mode    => '0644',
       owner   => 'root',
@@ -146,6 +227,7 @@ class puppet::master (
   class {'puppet::passenger':
     puppet_passenger_port    => $puppet_passenger_port,
     puppet_docroot           => $puppet_docroot,
+    puppet_root              => $puppet_root,
     apache_serveradmin       => $apache_serveradmin,
     puppet_conf              => $::puppet::params::puppet_conf,
     puppet_ssldir            => $puppet_ssldir,
