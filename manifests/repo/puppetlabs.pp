@@ -7,19 +7,10 @@ class puppet::repo::puppetlabs() {
   if($::osfamily == 'Debian') {
     Apt::Source {
       location    => 'http://apt.puppetlabs.com',
-      key         => {
-        id      => '47B320EB4C7C375AA9DAE1A01054B7A24BD6EC30',
-        content => template('puppet/pgp.key'),
-      },
+      key         => '4BD6EC30',
     }
 
-    if $::lsbdistid == 'Ubuntu' and versioncmp( $::lsbdistrelease, '16.04' ) >= 0 {
-      $main_repo = 'PC1'
-    } else {
-      $main_repo = 'main'
-    }
-
-    apt::source { 'puppetlabs':      repos => $main_repo }
+    apt::source { 'puppetlabs':      repos => 'main' }
     apt::source { 'puppetlabs-deps': repos => 'dependencies' }
   } elsif $::osfamily == 'Redhat' {
     if $::operatingsystem == 'Fedora' {
