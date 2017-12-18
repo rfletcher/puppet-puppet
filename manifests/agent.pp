@@ -16,6 +16,7 @@
 #   ['splay']                 - If splay should be enable defaults to false
 #   ['environment']           - The environment of the puppet agent
 #   ['report']                - Whether to return reports
+#   ['on_boot']               - Run puppet immediately upon booting
 #   ['pluginsync']            - Whethere to have pluginsync
 #   ['use_srv_records']       - Whethere to use srv records
 #   ['srv_domain']            - Domain to request the srv records
@@ -52,6 +53,7 @@ class puppet::agent(
   $puppet_run_command     = 'puppet agent --no-daemonize --onetime --logdest syslog > /dev/null 2>&1',
   $user_id                = undef,
   $group_id               = undef,
+  $on_boot                = true,
 
   #[main]
   $templatedir            = undef,
@@ -102,7 +104,7 @@ class puppet::agent(
     ensure   => $version,
   }
 
-  if $puppet_run_style == 'service' {
+  if $on_boot {
     $startonboot = 'yes'
   }
   else {
@@ -145,12 +147,22 @@ class puppet::agent(
       $time1  =  fqdn_rand($puppet_run_interval)
       $time2  =  fqdn_rand($puppet_run_interval) + 30
 
-      cron { 'puppet-client':
+      Cron {
         command => $puppet_run_command,
         user    => 'root',
+      }
+
+      cron { 'puppet-client': ensure => absent, }
+
+      cron { 'puppet':
         # run twice an hour, at a random minute in order not to collectively stress the puppetmaster
         hour    => '*',
         minute  => [ $time1, $time2 ],
+      }
+
+      cron { 'puppet-boot':
+        ensure  => $on_boot ? { true => present, default => absent },
+        special => 'reboot',
       }
     }
     # Run Puppet through external tooling, like MCollective
