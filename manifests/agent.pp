@@ -104,7 +104,7 @@ class puppet::agent(
     ensure   => $version,
   }
 
-  if $on_boot {
+  if $puppet_run_style == 'service' and $on_boot {
     $startonboot = 'yes'
   }
   else {
