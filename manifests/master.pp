@@ -126,22 +126,22 @@ class puppet::master (
       wget::fetch { $terminus_package:
         source      => $terminus_package_source,
         destination => $real_terminus_package_source,
-        before      => Package['puppet-master-terminus'],
+        before      => Package[$terminus_package],
       }
 
       # remove any version previously installed with apt
       exec { "remove apt ${terminus_package}":
         command => "dpkg -r ${terminus_package}",
         onlyif  => "dpkg --list ${terminus_package} | grep '^i' && apt-cache madison ${terminus_package} | grep \"\$(dpkg-query --show ${terminus_package} | awk '{ print \$2 }')\"",
-        before  => Package['puppet-master-terminus'],
+        before  => Package[$terminus_package],
       }
 
-      package { 'puppet-master-terminus':
+      package { $terminus_package:
         ensure   => $package_ensure,
+        name     => $terminus_package,
         provider => 'dpkg',
         source   => $real_terminus_package_source,
         before   => [
-          Package[$terminus_package],
           Package[$puppet_master_package],
         ],
         notify   => Service[$puppet_master_service],
